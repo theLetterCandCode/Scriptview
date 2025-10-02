@@ -6,7 +6,7 @@
 </div>
 
 
-__Using Scriptview and copying and pasting everything then republishing WILL get you called out, and blacklisted from using our dex.__
+__Using Scriptview and copying and pasting everything then republishing is highly restricted. Do not do this or we will take action..__
 
 Scriptview is a dex explorer script for roblox. Any exploits involving Scriptview is not our fault. For more information click the button down below this line.
 
