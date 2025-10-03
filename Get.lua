@@ -16,7 +16,7 @@ mainFrame.BorderSizePixel = 0
 -- Logo Image
 local logo = Instance.new("ImageLabel")
 logo.Parent = mainFrame
-logo.Size = UDim2.new(0, 80, 0, 80)
+logo.Size = UDim2.new(0, 175, 0, 80)
 logo.Position = UDim2.new(0, 10, 0, 10)
 logo.BackgroundTransparency = 1
 logo.Image = "rbxassetid://114450126752273"
@@ -28,7 +28,7 @@ title.Size = UDim2.new(1, 0, 0, 30)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 title.TextColor3 = Color3.fromRGB(200, 200, 200)
-title.Text = "Dark Gray Dex"
+title.Text = "Scriptview Dex"
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 18
 
