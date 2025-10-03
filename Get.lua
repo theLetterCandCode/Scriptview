@@ -1,263 +1,164 @@
--- Plugins/Scriptview/Main.lua
--- Scriptview: a Studio-only plugin for inspecting Scripts/LocalScripts/ModuleScripts and logs
--- Minimal comments; documentation-first. Uses Plugin API: CreateDockWidgetPluginGui, OpenScript, LogService:GetLogHistory.
+-- Dark Gray Dex GUI Script for Roblox
+-- This is a simple object explorer GUI with a dark gray theme
+-- Includes a logo image using the provided asset ID
 
-local Plugin = plugin
-local Selection = game:GetService("Selection")
-local ChangeHistoryService = game:GetService("ChangeHistoryService")
-local LogService = game:GetService("LogService")
-local RunService = game:GetService("RunService")
+local gui = Instance.new("ScreenGui")
+gui.Name = "DarkGrayDex"
+gui.Parent = game:GetService("CoreGui")  -- Use CoreGui for persistence (requires exploit or local testing)
 
--- CONFIG
-local WIDGET_ID = "ScriptviewDock_v1"
-local WINDOW_TITLE = "Scriptview"
-local ICON = "rbxassetid://135866511037510" -- provided decal
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = gui
+mainFrame.Size = UDim2.new(0.4, 0, 0.6, 0)
+mainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 0
 
--- Helpers
-local function isScriptLike(inst)
-	return inst:IsA("Script") or inst:IsA("LocalScript") or inst:IsA("ModuleScript")
+-- Logo Image
+local logo = Instance.new("ImageLabel")
+logo.Parent = mainFrame
+logo.Size = UDim2.new(0, 80, 0, 80)
+logo.Position = UDim2.new(0, 10, 0, 10)
+logo.BackgroundTransparency = 1
+logo.Image = "rbxassetid://114450126752273"
+
+-- Title Label
+local title = Instance.new("TextLabel")
+title.Parent = mainFrame
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+title.TextColor3 = Color3.fromRGB(200, 200, 200)
+title.Text = "Dark Gray Dex"
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 18
+
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Parent = title
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Text = "X"
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextSize = 18
+closeButton.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+-- Explorer Scrolling Frame
+local explorerFrame = Instance.new("ScrollingFrame")
+explorerFrame.Parent = mainFrame
+explorerFrame.Size = UDim2.new(1, 0, 1, -100)
+explorerFrame.Position = UDim2.new(0, 0, 0, 100)
+explorerFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+explorerFrame.BorderSizePixel = 0
+explorerFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+explorerFrame.ScrollBarThickness = 8
+explorerFrame.ScrollBarImageColor3 = Color3.fromRGB(70, 70, 70)
+
+-- Function to add children recursively
+local function addItem(parentFrame, instance, depth)
+    local itemButton = Instance.new("TextButton")
+    itemButton.Parent = parentFrame
+    itemButton.Size = UDim2.new(1, -depth * 10, 0, 20)
+    itemButton.Position = UDim2.new(0, depth * 10, 0, (#parentFrame:GetChildren() - 1) * 20)
+    itemButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    itemButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    itemButton.Text = instance.Name .. " [" .. instance.ClassName .. "]"
+    itemButton.TextXAlignment = Enum.TextXAlignment.Left
+    itemButton.Font = Enum.Font.SourceSans
+    itemButton.TextSize = 14
+    itemButton.BorderSizePixel = 0
+
+    local childrenContainer
+    itemButton.MouseButton1Click:Connect(function()
+        if childrenContainer then
+            childrenContainer:Destroy()
+            childrenContainer = nil
+            -- Update canvas size
+            explorerFrame.CanvasSize = UDim2.new(0, 0, 0, (#explorerFrame:GetChildren() - 1) * 20)
+        else
+            childrenContainer = Instance.new("Frame")
+            childrenContainer.Parent = itemButton
+            childrenContainer.Name = "Children"
+            childrenContainer.Size = UDim2.new(1, 0, 0, 0)
+            childrenContainer.Position = UDim2.new(0, 0, 1, 0)
+            childrenContainer.BackgroundTransparency = 1
+
+            for _, child in ipairs(instance:GetChildren()) do
+                addItem(childrenContainer, child, depth + 1)
+            end
+
+            -- Update canvas size
+            explorerFrame.CanvasSize = UDim2.new(0, 0, 0, explorerFrame.CanvasSize.Y.Offset + #instance:GetChildren() * 20)
+        end
+    end)
 end
 
-local function make(class, props)
-	local obj = Instance.new(class)
-	for k,v in pairs(props or {}) do obj[k] = v end
-	return obj
-end
+-- Root Item (game)
+local rootItem = Instance.new("TextButton")
+rootItem.Parent = explorerFrame
+rootItem.Size = UDim2.new(1, 0, 0, 20)
+rootItem.Position = UDim2.new(0, 0, 0, 0)
+rootItem.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+rootItem.TextColor3 = Color3.fromRGB(255, 255, 255)
+rootItem.Text = "game [DataModel]"
+rootItem.TextXAlignment = Enum.TextXAlignment.Left
+rootItem.Font = Enum.Font.SourceSans
+rootItem.TextSize = 14
+rootItem.BorderSizePixel = 0
 
--- Create toolbar/button
-local toolbar = Plugin:CreateToolbar("Scriptview")
-local button = toolbar:CreateButton("ToggleScriptview", "Open Scriptview", ICON)
-button.ClickableWhenViewportHidden = true
+local rootChildren
+rootItem.MouseButton1Click:Connect(function()
+    if rootChildren then
+        rootChildren:Destroy()
+        rootChildren = nil
+        explorerFrame.CanvasSize = UDim2.new(0, 0, 0, 20)
+    else
+        rootChildren = Instance.new("Frame")
+        rootChildren.Parent = rootItem
+        rootChildren.Name = "Children"
+        rootChildren.Size = UDim2.new(1, 0, 0, 0)
+        rootChildren.Position = UDim2.new(0, 0, 1, 0)
+        rootChildren.BackgroundTransparency = 1
 
--- Dock widget
-local widgetInfo = DockWidgetPluginGuiInfo.new(
-	Enum.InitialDockState.Right, -- initial dock state
-	false, -- initially enabled
-	false, -- override enabled
-	300, -- default width
-	420, -- default height
-	200, -- min width
-	200  -- min height
-)
-local dock = Plugin:CreateDockWidgetPluginGui(WIDGET_ID, widgetInfo)
-dock.Title = WINDOW_TITLE
+        for _, service in ipairs(game:GetChildren()) do
+            addItem(rootChildren, service, 1)
+        end
 
--- Root UI
-local root = make("Frame", {Name="Root", Size=UDim2.fromScale(1,1), BackgroundTransparency=1, Parent=dock})
-local ui = Instance.new("ScreenGui") -- container frame (widgets are 2D)
-ui.ResetOnSpawn = false
-ui.Parent = dock
-
--- Layout: left tree, middle inspector, right tabs
-local main = make("Frame", {Name="Main", Parent=ui, Size=UDim2.fromScale(1,1), BackgroundColor3 = Color3.fromRGB(250,250,250)})
-local layout = make("UIListLayout", {Parent=main, FillDirection=Enum.FillDirection.Horizontal, SortOrder=Enum.SortOrder.LayoutOrder})
-
--- LEFT: Tree
-local left = make("Frame", {Parent=main, Size=UDim2.new(0.33,0,1,0), BackgroundColor3=Color3.fromRGB(245,245,245)})
-local leftHeader = make("TextBox", {Parent=left, Size=UDim2.new(1,0,0,28), Text="Search...", TextColor3=Color3.fromRGB(100,100,100), TextXAlignment=Enum.TextXAlignment.Left, BackgroundColor3=Color3.fromRGB(230,230,230)})
-local leftScroll = make("ScrollingFrame", {Parent=left, Size=UDim2.new(1,0,1,-28), CanvasSize=UDim2.new(0,0,0,0), ScrollBarImageColor3=Color3.fromRGB(170,170,170)})
-leftScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-local leftListLayout = make("UIListLayout", {Parent=leftScroll, SortOrder=Enum.SortOrder.Name, Padding=UDim.new(0,2)})
-
--- MIDDLE: Inspector / Actions
-local mid = make("Frame", {Parent=main, Size=UDim2.new(0.34,0,1,0), BackgroundColor3=Color3.fromRGB(255,255,255)})
-local midHeader = make("TextLabel", {Parent=mid, Size=UDim2.new(1,0,0,28), Text="Inspector", TextXAlignment=Enum.TextXAlignment.Left, BackgroundColor3=Color3.fromRGB(240,240,240)})
-local propArea = make("ScrollingFrame", {Parent=mid, Size=UDim2.new(1,0,1,-100), CanvasSize=UDim2.new(0,0,0,0)})
-propArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
-local actions = make("Frame", {Parent=mid, Size=UDim2.new(1,0,0,100), Position=UDim2.new(0,0,1,-100), BackgroundColor3=Color3.fromRGB(250,250,250)})
-local btnSelect = make("TextButton", {Parent=actions, Size=UDim2.new(1,-10,0,30), Position=UDim2.new(0,0,6,6), Text="Select In Explorer"})
-local btnFocus = make("TextButton", {Parent=actions, Size=UDim2.new(1,-10,0,30), Position=UDim2.new(0,0,6,42), Text="Focus View (Camera)"})
-local btnOpenScript = make("TextButton", {Parent=actions, Size=UDim2.new(1,-10,0,30), Position=UDim2.new(0,0,6,78), Text="Open In Script Editor"})
-
--- RIGHT: Tabs (Source, Console)
-local right = make("Frame", {Parent=main, Size=UDim2.new(0.33,0,1,0), BackgroundColor3=Color3.fromRGB(245,245,245)})
-local tabBar = make("Frame", {Parent=right, Size=UDim2.new(1,0,0,28), BackgroundColor3=Color3.fromRGB(240,240,240)})
-local tSourceBtn = make("TextButton", {Parent=tabBar, Size=UDim2.new(0.5,0,1,0), Text="Source"})
-local tConsoleBtn = make("TextButton", {Parent=tabBar, Size=UDim2.new(0.5,0,1,0), Position=UDim2.new(0.5,0,0,0), Text="Console"})
-local contentArea = make("Frame", {Parent=right, Size=UDim2.new(1,0,1,-28), Position=UDim2.new(0,0,0,28)})
-local sourceBox = make("TextBox", {Parent=contentArea, Size=UDim2.new(1,0,1,0), Text="", TextWrapped=false, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top, Font=Enum.Font.Code, TextSize=14, MultiLine=true, ClearTextOnFocus=false, BackgroundColor3=Color3.fromRGB(255,255,255)})
-local consoleBox = make("ScrollingFrame", {Parent=contentArea, Size=UDim2.new(1,0,1,0), Visible=false, CanvasSize=UDim2.new(0,0,0,0)})
-consoleBox.AutomaticCanvasSize = Enum.AutomaticSize.Y
-local consoleLayout = make("UIListLayout", {Parent=consoleBox})
-
--- State
-local selectedInstance = nil
-
--- Utilities: populate tree (workspace + Services commonly containing scripts)
-local function traverseAndAdd(parentFrame, instance, prefix)
-	prefix = prefix or ""
-	-- only show containers and script-likes
-	local button = make("TextButton", {Parent=parentFrame, Text = prefix .. instance.Name .. (isScriptLike(instance) and (" ["..instance.ClassName.."]") or ""), Size=UDim2.new(1,0,0,24), TextXAlignment=Enum.TextXAlignment.Left})
-	button.MouseButton1Click:Connect(function()
-		selectedInstance = instance
-		Selection:Set({instance})
-		-- update Inspector
-		updateInspector()
-	end)
-	-- recursively add children if container
-	local children = instance:GetChildren()
-	for _,child in ipairs(children) do
-		-- show only useful items or scripts
-		if #child:GetChildren() > 0 or isScriptLike(child) then
-			traverseAndAdd(parentFrame, child, prefix .. "  ")
-		elseif isScriptLike(child) then
-			traverseAndAdd(parentFrame, child, prefix .. "  ")
-		end
-	end
-end
-
-function refreshTree(filterText)
-	for _,c in ipairs(leftScroll:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
-	-- Common roots: Workspace and Scripts containers
-	local roots = {workspace, game:GetService("ServerScriptService"), game:GetService("StarterPlayer"), game:GetService("StarterPlayerScripts"), game:GetService("ReplicatedStorage")}
-	for _,rootInst in ipairs(roots) do
-		if rootInst then
-			local rootBtn = make("TextLabel", {Parent=leftScroll, Text = rootInst.Name, Size=UDim2.new(1,0,0,20), BackgroundColor3=Color3.fromRGB(240,240,240), TextXAlignment=Enum.TextXAlignment.Left})
-			for _,desc in ipairs(rootInst:GetDescendants()) do
-				if isScriptLike(desc) then
-					if (not filterText) or filterText == "" or string.find(string.lower(desc.Name), string.lower(filterText)) then
-						local line = make("TextButton", {Parent=leftScroll, Text = "  "..desc.Name.." ["..desc.ClassName.."]", Size=UDim2.new(1,0,0,20), TextXAlignment=Enum.TextXAlignment.Left})
-						line.MouseButton1Click:Connect(function()
-							selectedInstance = desc
-							Selection:Set({desc})
-							updateInspector()
-						end)
-					end
-				end
-			end
-		end
-	end
-end
-
--- Inspector update
-function updateInspector()
-	for _,c in ipairs(propArea:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
-	if not selectedInstance then return end
-	local props = {"ClassName","Name","Parent","Archivable"}
-	for _,k in ipairs(props) do
-		local val = tostring(selectedInstance[k])
-		local label = make("TextLabel", {Parent=propArea, Size=UDim2.new(1,0,0,20), Text = k..": "..val, TextXAlignment=Enum.TextXAlignment.Left})
-	end
-	-- show some special properties for parts
-	if selectedInstance:IsA("BasePart") then
-		local pos = tostring(selectedInstance.Position)
-		local label = make("TextLabel", {Parent=propArea, Size=UDim2.new(1,0,0,20), Text = "Position: "..pos, TextXAlignment=Enum.TextXAlignment.Left})
-	end
-	-- populate source viewer if script-like
-	if isScriptLike(selectedInstance) then
-		local ok, src = pcall(function() return selectedInstance.Source end)
-		if ok and src then
-			sourceBox.Text = src
-			sourceBox.Visible = true
-			consoleBox.Visible = false
-		else
-			sourceBox.Text = "-- (Unable to read Source) --"
-		end
-	else
-		sourceBox.Text = "-- Not a Script/LocalScript/ModuleScript --"
-	end
-end
-
--- Button behaviors
-btnSelect.MouseButton1Click:Connect(function()
-	if selectedInstance then Selection:Set({selectedInstance}) end
+        explorerFrame.CanvasSize = UDim2.new(0, 0, 0, 20 + #game:GetChildren() * 20)
+    end
 end)
 
-btnFocus.MouseButton1Click:Connect(function()
-	if not selectedInstance then return end
-	if selectedInstance:IsA("BasePart") then
-		-- scriptable camera move (Studio)
-		local cam = workspace.CurrentCamera
-		if cam then
-			local prevType = cam.CameraType
-			cam.CameraType = Enum.CameraType.Scriptable
-			cam.CFrame = selectedInstance.CFrame * CFrame.new(0, 2, -8)
-			delay(0.35, function() pcall(function() cam.CameraType = prevType end) end)
-		end
-	end
+-- Make GUI draggable (simple drag implementation)
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
 end)
 
-btnOpenScript.MouseButton1Click:Connect(function()
-	if selectedInstance and isScriptLike(selectedInstance) then
-		-- Open the script in the Studio script editor
-		local ok, err = pcall(function() Plugin:OpenScript(selectedInstance) end)
-		if not ok then
-			warn("Scriptview: failed to open script:", err)
-			-- Try ScriptEditorService alternative if plugin:OpenScript is not available
-			local success, sErr = pcall(function()
-				local ScriptEditorService = game:GetService("ScriptEditorService")
-				if ScriptEditorService and ScriptEditorService.OpenScriptDocumentAsync then
-					ScriptEditorService:OpenScriptDocumentAsync(selectedInstance)
-				end
-			end)
-			if not success then warn("Scriptview: alternative open attempt failed:", sErr) end
-		end
-	end
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
 end)
 
--- Console: pull logs
-local function refreshConsole()
-	for _,c in ipairs(consoleBox:GetChildren()) do if not (c:IsA("UIListLayout")) then c:Destroy() end end
-	local entries = {}
-	local ok, hist = pcall(function() return LogService:GetLogHistory() end)
-	if ok and hist then
-		for i = 1, #hist do
-			local e = hist[i]
-			local text = string.format("[%s] %s", os.date("%H:%M:%S", math.floor(e[3]/1000)), tostring(e[1]))
-			local label = make("TextLabel", {Parent=consoleBox, Size=UDim2.new(1,0,0,18), Text = text, TextXAlignment=Enum.TextXAlignment.Left, BackgroundTransparency=1})
-		end
-	end
-end
-
--- Tab switching
-tSourceBtn.MouseButton1Click:Connect(function()
-	sourceBox.Visible = true
-	consoleBox.Visible = false
+game:GetService("RunService").RenderStepped:Connect(function()
+    if dragging and dragInput then
+        local delta = dragInput.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
 end)
-tConsoleBtn.MouseButton1Click:Connect(function()
-	sourceBox.Visible = false
-	consoleBox.Visible = true
-	refreshConsole()
-end)
-
--- Search
-leftHeader.FocusLost:Connect(function(enter)
-	refreshTree(leftHeader.Text)
-end)
-
--- Selection sync
-Selection.SelectionChanged:Connect(function()
-	local sel = Selection:Get()
-	if sel and #sel > 0 then
-		selectedInstance = sel[1]
-		updateInspector()
-	end
-end)
-
--- Button toggles widget
-button.Click:Connect(function()
-	dock.Enabled = not dock.Enabled
-end)
-
--- Start-up populate
-refreshTree("")
-
--- Periodic refresh (non-intrusive)
-local lastRefresh = tick()
-RunService.Heartbeat:Connect(function(dt)
-	if tick() - lastRefresh > 5 then
-		lastRefresh = tick()
-		-- harmless refresh of tree to catch new scripts
-		refreshTree(leftHeader.Text)
-	end
-end)
-
--- Clean shutdown handler
-dock.AncestryChanged:Connect(function()
-	if not dock:IsDescendantOf(game:GetService("CoreGui")) and not dock.Parent then
-		-- attempt cleanup
-	end
-end)
-
--- Finalize: show widget when first installed
-dock.Enabled = true
