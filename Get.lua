@@ -62,13 +62,23 @@ minimizeButton.Text = "-"
 minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 minimizeButton.TextSize = 18
 minimizeButton.Parent = titleBar
-local isHidden = false
+
+local isMinimized = false
+local originalSize = mainFrame.Size
 minimizeButton.MouseButton1Click:Connect(function()
-    isHidden = not isHidden
-    mainFrame.Visible = not isHidden
-    if isHidden then
+    isMinimized = not isMinimized
+    if isMinimized then
+        originalSize = mainFrame.Size
+        mainFrame.Size = UDim2.new(0, 600, 0, 30)
+        searchFrame.Visible = false
+        treeFrame.Visible = false
+        detailsFrame.Visible = false
         minimizeButton.Text = "+"
     else
+        mainFrame.Size = originalSize
+        searchFrame.Visible = true
+        treeFrame.Visible = true
+        detailsFrame.Visible = true
         minimizeButton.Text = "-"
     end
 end)
@@ -220,7 +230,7 @@ local function createTreeItem(obj, parentFrame, depth)
     nameButton.Size = UDim2.new(1, -20, 1, 0)
     nameButton.Position = UDim2.new(0, 20, 0, 0)
     nameButton.BackgroundTransparency = 1
-    nameButton.Text = obj.Name .. " (" .. obj.ClassName .. ")"
+    nameButton.Text = (obj.Name == "" and "game" or obj.Name) .. " (" .. obj.ClassName .. ")"
     nameButton.TextColor3 = Color3.fromRGB(200, 200, 200)
     nameButton.TextSize = 14
     nameButton.TextXAlignment = Enum.TextXAlignment.Left
@@ -238,23 +248,31 @@ local function createTreeItem(obj, parentFrame, depth)
     childrenLayout.Parent = childrenFrame
 
     local expanded = false
+    local populated = false
+
     expandButton.MouseButton1Click:Connect(function()
         expanded = not expanded
         childrenFrame.Visible = expanded
-        expandButton.Rotation = expanded and 90 or 0  -- Rotate to indicate expand
-        local height = expanded and childrenLayout.AbsoluteContentSize.Y or 0
-        childrenFrame.Size = UDim2.new(1, 0, 0, height)
+        expandButton.Rotation = expanded and 90 or 0
+        if expanded then
+            local height = childrenLayout.AbsoluteContentSize.Y
+            childrenFrame.Size = UDim2.new(1, 0, 0, height)
+        else
+            childrenFrame.Size = UDim2.new(1, 0, 0, 0)
+        end
         treeFrame.CanvasSize = UDim2.new(0, 0, 0, treeLayout.AbsoluteContentSize.Y)
     end)
 
     -- Populate children lazily
-    local populated = false
     expandButton.MouseButton1Click:Connect(function()
-        if not populated and expanded then
+        if expanded and not populated then
             populated = true
             for _, child in ipairs(obj:GetChildren()) do
                 createTreeItem(child, childrenFrame, depth + 1)
             end
+            local height = childrenLayout.AbsoluteContentSize.Y
+            childrenFrame.Size = UDim2.new(1, 0, 0, height)
+            treeFrame.CanvasSize = UDim2.new(0, 0, 0, treeLayout.AbsoluteContentSize.Y)
         end
     end)
 
@@ -328,14 +346,16 @@ createTreeItem(game, treeFrame, 0)
 -- Search functionality
 local function refreshTree(filter)
     treeFrame:ClearAllChildren()
-    treeLayout.Parent = treeFrame  -- Re-add layout
+    treeLayout.Parent = treeFrame  -- Re-add layout if needed, but shouldn't be necessary
 
     local function addFiltered(obj, parentFrame, depth)
-        if obj.Name:lower():find(filter:lower()) then
+        local added = false
+        if obj.Name:lower():find(filter:lower()) or obj.ClassName:lower():find(filter:lower()) then
             createTreeItem(obj, parentFrame, depth)
+            added = true
         end
         for _, child in ipairs(obj:GetChildren()) do
-            addFiltered(child, parentFrame, depth)  -- Flat search for lightness
+            addFiltered(child, added and itemFrame:FindFirstChild("childrenFrame") or parentFrame, added and depth + 1 or depth)
         end
     end
 
