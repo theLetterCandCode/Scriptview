@@ -1,324 +1,95 @@
--- Dark Gray Dex GUI Script for Roblox
--- Improved version with tree view using UIListLayout, search, theme settings, properties viewer, class icons (basic), logo fit
+-- Light Dex Explorer GUI Script for Roblox
+-- Place this script in StarterGui or use a LocalScript
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "DarkGrayDex"
-gui.Parent = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
 
-local themes = {
-    dark = {
-        mainBg = Color3.fromRGB(40, 40, 40),
-        titleBg = Color3.fromRGB(30, 30, 30),
-        textColor = Color3.fromRGB(200, 200, 200),
-        buttonBg = Color3.fromRGB(60, 60, 60),
-        scrollBg = Color3.fromRGB(50, 50, 50),
-        scrollBar = Color3.fromRGB(70, 70, 70),
-    },
-    light = {
-        mainBg = Color3.fromRGB(240, 240, 240),
-        titleBg = Color3.fromRGB(220, 220, 220),
-        textColor = Color3.fromRGB(50, 50, 50),
-        buttonBg = Color3.fromRGB(200, 200, 200),
-        scrollBg = Color3.fromRGB(230, 230, 230),
-        scrollBar = Color3.fromRGB(180, 180, 180),
-    }
-}
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LightDexExplorer"
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
 
-local currentTheme = themes.dark
-
+-- Main Frame (draggable)
 local mainFrame = Instance.new("Frame")
-mainFrame.Parent = gui
-mainFrame.Size = UDim2.new(0.6, 0, 0.7, 0)
-mainFrame.Position = UDim2.new(0.2, 0, 0.15, 0)
-mainFrame.BackgroundColor3 = currentTheme.mainBg
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 600, 0, 400)
+mainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Parent = screenGui
 
--- Logo Image
-local logo = Instance.new("ImageLabel")
-logo.Parent = mainFrame
-logo.Size = UDim2.new(0, 50, 0, 50)
-logo.Position = UDim2.new(0, 10, 0, 10)
-mainFrame.BackgroundTransparency = 1
-logo.Image = "rbxassetid://114450126752273"
-logo.ScaleType = Enum.ScaleType.Fit
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleBar.Parent = mainFrame
 
--- Title Label
-local title = Instance.new("TextLabel")
-title.Parent = mainFrame
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundColor3 = currentTheme.titleBg
-title.TextColor3 = currentTheme.textColor
-title.Text = "Dark Gray Dex"
-title.Font = Enum.Font.SourceSansBold
-title.TextSize = 18
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -60, 1, 0)
+titleLabel.Position = UDim2.new(0, 5, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Light Dex Explorer"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
 
 -- Close Button
 local closeButton = Instance.new("TextButton")
-closeButton.Parent = title
 closeButton.Size = UDim2.new(0, 30, 0, 30)
 closeButton.Position = UDim2.new(1, -30, 0, 0)
-closeButton.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 closeButton.Text = "X"
-closeButton.Font = Enum.Font.SourceSansBold
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeButton.TextSize = 18
+closeButton.Parent = titleBar
 closeButton.MouseButton1Click:Connect(function()
-    gui:Destroy()
+    screenGui:Destroy()
 end)
 
--- Theme Button
-local themeButton = Instance.new("TextButton")
-themeButton.Parent = title
-themeButton.Size = UDim2.new(0, 60, 0, 30)
-themeButton.Position = UDim2.new(1, -90, 0, 0)
-themeButton.BackgroundColor3 = currentTheme.buttonBg
-themeButton.TextColor3 = currentTheme.textColor
-themeButton.Text = "Theme"
-themeButton.Font = Enum.Font.SourceSansBold
-themeButton.TextSize = 14
-themeButton.MouseButton1Click:Connect(function()
-    if currentTheme == themes.dark then
-        currentTheme = themes.light
+-- Minimize Button (Hide/Show)
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+minimizeButton.Position = UDim2.new(1, -60, 0, 0)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+minimizeButton.Text = "-"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.TextSize = 18
+minimizeButton.Parent = titleBar
+local isHidden = false
+minimizeButton.MouseButton1Click:Connect(function()
+    isHidden = not isHidden
+    mainFrame.Visible = not isHidden
+    if isHidden then
+        minimizeButton.Text = "+"
     else
-        currentTheme = themes.dark
+        minimizeButton.Text = "-"
     end
-    applyTheme()
 end)
 
--- Search Box
-local searchBox = Instance.new("TextBox")
-searchBox.Parent = mainFrame
-searchBox.Size = UDim2.new(1, -20, 0, 30)
-searchBox.Position = UDim2.new(0, 10, 0, 40)
-searchBox.BackgroundColor3 = currentTheme.buttonBg
-searchBox.TextColor3 = currentTheme.textColor
-searchBox.PlaceholderText = "Search..."
-searchBox.Font = Enum.Font.SourceSans
-searchBox.TextSize = 14
-
--- Explorer Frame (left)
-local explorerFrame = Instance.new("ScrollingFrame")
-explorerFrame.Parent = mainFrame
-explorerFrame.Size = UDim2.new(0.5, 0, 1, -80)
-explorerFrame.Position = UDim2.new(0, 0, 0, 80)
-explorerFrame.BackgroundColor3 = currentTheme.scrollBg
-explorerFrame.BorderSizePixel = 0
-explorerFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-explorerFrame.ScrollBarThickness = 8
-explorerFrame.ScrollBarImageColor3 = currentTheme.scrollBar
-
-local explorerLayout = Instance.new("UIListLayout")
-explorerLayout.Parent = explorerFrame
-explorerLayout.SortOrder = Enum.SortOrder.LayoutOrder
-explorerLayout.FillDirection = Enum.FillDirection.Vertical
-explorerLayout.Padding = UDim.new(0, 0)
-
--- Properties Frame (right)
-local propertiesFrame = Instance.new("ScrollingFrame")
-propertiesFrame.Parent = mainFrame
-propertiesFrame.Size = UDim2.new(0.5, 0, 1, -80)
-propertiesFrame.Position = UDim2.new(0.5, 0, 0, 80)
-propertiesFrame.BackgroundColor3 = currentTheme.scrollBg
-propertiesFrame.BorderSizePixel = 0
-propertiesFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-propertiesFrame.ScrollBarThickness = 8
-propertiesFrame.ScrollBarImageColor3 = currentTheme.scrollBar
-
-local propertiesLayout = Instance.new("UIListLayout")
-propertiesLayout.Parent = propertiesFrame
-propertiesLayout.SortOrder = Enum.SortOrder.LayoutOrder
-propertiesLayout.FillDirection = Enum.FillDirection.Vertical
-propertiesLayout.Padding = UDim.new(0, 0)
-
-local selectedInstance = nil
-
--- Function to apply theme
-function applyTheme()
-    mainFrame.BackgroundColor3 = currentTheme.mainBg
-    title.BackgroundColor3 = currentTheme.titleBg
-    title.TextColor3 = currentTheme.textColor
-    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- keep white
-    themeButton.BackgroundColor3 = currentTheme.buttonBg
-    themeButton.TextColor3 = currentTheme.textColor
-    searchBox.BackgroundColor3 = currentTheme.buttonBg
-    searchBox.TextColor3 = currentTheme.textColor
-    explorerFrame.BackgroundColor3 = currentTheme.scrollBg
-    explorerFrame.ScrollBarImageColor3 = currentTheme.scrollBar
-    propertiesFrame.BackgroundColor3 = currentTheme.scrollBg
-    propertiesFrame.ScrollBarImageColor3 = currentTheme.scrollBar
-    -- Apply to all items
-    for _, item in ipairs(explorerFrame:GetChildren()) do
-        if item:IsA("Frame") then
-            item:FindFirstChild("ExpandButton").TextColor3 = currentTheme.textColor
-            item:FindFirstChild("NameLabel").TextColor3 = currentTheme.textColor
-            item.BackgroundColor3 = currentTheme.buttonBg
-        end
-    end
-    updateProperties()
-end
-
--- Property names to display
-local propertyNames = {"Name", "ClassName", "Parent", "Archivable", "PrimaryPart"} -- Add more as needed
-
--- Function to update properties
-function updateProperties()
-    propertiesFrame:ClearAllChildren()
-    if selectedInstance then
-        for _, prop = in ipairs(propertyNames) do
-            local propFrame = Instance.new("Frame")
-            propFrame.Parent = propertiesFrame
-            propFrame.Size = UDim2.new(1, 0, 0, 20)
-            propFrame.BackgroundTransparency = 1
-
-            local propLabel = Instance.new("TextLabel")
-            propLabel.Parent = propFrame
-            propLabel.Size = UDim2.new(1, 0, 1, 0)
-            propLabel.BackgroundTransparency = 1
-            propLabel.TextColor3 = currentTheme.textColor
-            propLabel.Text = prop .. ": " .. tostring(selectedInstance[prop] or "N/A")
-            propLabel.TextXAlignment = Enum.TextXAlignment.Left
-            propLabel.Font = Enum.Font.SourceSans
-            propLabel.TextSize = 14
-
-            propertiesLayout:ApplyLayout()
-            propertiesFrame.CanvasSize = UDim2.new(0, 0, 0, #propertiesFrame:GetChildren() * 20)
-        end
-    end
-end
-
--- Function to create tree item
-local function createTreeItem(instance, depth, parentItem)
-    local itemFrame = Instance.new("Frame")
-    itemFrame.Size = UDim2.new(1, 0, 0, 20)
-    itemFrame.BackgroundColor3 = currentTheme.buttonBg
-    itemFrame.BorderSizePixel = 0
-
-    local padding = Instance.new("UIPadding")
-    padding.Parent = itemFrame
-    padding.PaddingLeft = UDim.new(0, depth * 10)
-
-    local layout = Instance.new("UIListLayout")
-    layout.Parent = itemFrame
-    layout.FillDirection = Enum.FillDirection.Horizontal
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.VerticalAlignment = Enum.VerticalAlignment.Center
-    layout.Padding = UDim.new(0, 5)
-
-    local expandButton = Instance.new("TextButton")
-    expandButton.Name = "ExpandButton"
-    expandButton.Parent = itemFrame
-    expandButton.Size = UDim2.new(0, 15, 0, 15)
-    expandButton.BackgroundTransparency = 1
-    expandButton.TextColor3 = currentTheme.textColor
-    expandButton.Text = "+"
-    expandButton.Font = Enum.Font.SourceSansBold
-    expandButton.TextSize = 14
-
-    local icon = Instance.new("ImageLabel")
-    icon.Name = "Icon"
-    icon.Parent = itemFrame
-    icon.Size = UDim2.new(0, 16, 0, 16)
-    icon.BackgroundTransparency = 1
-    -- Basic condition for icon
-    if not instance:IsA("ServiceProvider") and not instance:IsA("DataModel") then
-        icon.Image = "rbxasset://textures/ClassImages.png"
-        icon.ImageRectSize = Vector2.new(16,16)
-        icon.ImageRectOffset = Vector2.new(0, 0) -- Replace with actual for class
-        -- Note: Replace offset for different classes, e.g. for Part, find the Num
-    end
-
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "NameLabel"
-    nameLabel.Parent = itemFrame
-    nameLabel.Size = UDim2.new(1, -50, 1, 0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.TextColor3 = currentTheme.textColor
-    nameLabel.Text = instance.Name .. " [" .. instance.ClassName .. "]"
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Font = Enum.Font.SourceSans
-    nameLabel.TextSize = 14
-
-    local expanded = false
-    local childrenItems = {}
-
-    expandButton.MouseButton1Click:Connect(function()
-        expanded = not expanded
-        expandButton.Text = expanded and "-" or "+"
-        if expanded then
-            for _, child in ipairs(instance:GetChildren()) do
-                local childItem = createTreeItem(child, depth + 1, itemFrame)
-                table.insert(childrenItems, childItem)
-                childItem.Parent = explorerFrame
-            end
-        else
-            for _, childItem in ipairs(childrenItems) do
-                childItem:Destroy()
-            end
-            childrenItems = {}
-        end
-        updateCanvasSize()
-    end)
-
-    nameLabel.MouseButton1Click:Connect(function()
-        selectedInstance = instance
-        updateProperties()
-    end)
-
-    return itemFrame
-end
-
--- Function to update canvas size
-function updateCanvasSize()
-    local height = 0
-    for _, child in ipairs(explorerFrame:GetChildren()) if child:IsA("Frame") then
-        height = height + child.AbsoluteSize.Y
-    end
-    explorerFrame.CanvasSize = UDim2.new(0, 0, 0, height)
-end
-
--- Initial root
-local rootItem = createTreeItem(game, 0)
-rootItem.Parent = explorerFrame
-updateCanvasSize()
-
--- Search functionality (simple flat search, shows matching and hides others)
-searchBox.FocusLost:Connect(function(enterPressed)
-    if not enterPressed then return end
-    local query = searchBox.Text:lower()
-    if query == "" then
-        -- Reset
-        explorerFrame:ClearAllChildren()
-        rootItem = createTreeItem(game, 0)
-        rootItem.Parent = explorerFrame
-        updateCanvasSize()
-        return
-    end
-    explorerFrame:ClearAllChildren()
-    local function searchRecursive(instance, depth)
-        if instance.Name:lower():find(query) then
-            local item = createTreeItem(instance, depth)
-            item.Parent = explorerFrame
-        end
-        for _, child in ipairs(instance:GetChildren()) do
-            searchRecursive(child, depth + 1)
-        end
-    end
-    searchRecursive(game, 0)
-    updateCanvasSize()
-end)
-
--- Make GUI draggable
+-- Make draggable
 local dragging
 local dragInput
 local dragStart
 local startPos
 
-mainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType = Enum.UserInputType.MouseButton1 then
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
         dragStart = input.Position
         startPos = mainFrame.Position
+        
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
@@ -327,18 +98,260 @@ mainFrame.InputBegan:Connect(function(input)
     end
 end)
 
-mainFrame.InputChanged:Connect(function(input)
+titleBar.InputChanged:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseMovement then
         dragInput = input
     end
 end)
 
-game:GetService("RunService").RenderStepped:Connect(function()
-    if dragging and dragInput then
-        local delta = dragInput.Position - dragStart
-        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
     end
 end)
 
--- Initial theme apply
-applyTheme()
+-- Search Bar
+local searchFrame = Instance.new("Frame")
+searchFrame.Size = UDim2.new(1, 0, 0, 40)
+searchFrame.Position = UDim2.new(0, 0, 0, 30)
+searchFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+searchFrame.Parent = mainFrame
+
+local searchIcon = Instance.new("ImageLabel")
+searchIcon.Size = UDim2.new(0, 30, 0, 30)
+searchIcon.Position = UDim2.new(0, 5, 0.5, -15)
+searchIcon.BackgroundTransparency = 1
+searchIcon.Image = "rbxassetid://14589737447"
+searchIcon.Parent = searchFrame
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -40, 0, 30)
+searchBox.Position = UDim2.new(0, 40, 0.5, -15)
+searchBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+searchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchBox.PlaceholderText = "Search for object..."
+searchBox.TextSize = 16
+searchBox.Parent = searchFrame
+
+-- Layout: Left - Tree View, Right - Details (Viewport, Properties, Scripts)
+local treeFrame = Instance.new("ScrollingFrame")
+treeFrame.Size = UDim2.new(0.5, 0, 1, -70)
+treeFrame.Position = UDim2.new(0, 0, 0, 70)
+treeFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+treeFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+treeFrame.ScrollBarThickness = 8
+treeFrame.Parent = mainFrame
+
+local treeLayout = Instance.new("UIListLayout")
+treeLayout.SortOrder = Enum.SortOrder.LayoutOrder
+treeLayout.Padding = UDim.new(0, 2)
+treeLayout.Parent = treeFrame
+
+local detailsFrame = Instance.new("Frame")
+detailsFrame.Size = UDim2.new(0.5, 0, 1, -70)
+detailsFrame.Position = UDim2.new(0.5, 0, 0, 70)
+detailsFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+detailsFrame.Parent = mainFrame
+
+-- Viewport in Details
+local viewportFrame = Instance.new("ViewportFrame")
+viewportFrame.Size = UDim2.new(1, 0, 0, 150)
+viewportFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+viewportFrame.Parent = detailsFrame
+
+local camera = Instance.new("Camera")
+camera.Parent = viewportFrame
+viewportFrame.CurrentCamera = camera
+
+-- Properties ScrollingFrame
+local propsFrame = Instance.new("ScrollingFrame")
+propsFrame.Size = UDim2.new(1, 0, 1, -150)
+propsFrame.Position = UDim2.new(0, 0, 0, 150)
+propsFrame.BackgroundTransparency = 1
+propsFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+propsFrame.ScrollBarThickness = 8
+propsFrame.Parent = detailsFrame
+
+local propsLayout = Instance.new("UIListLayout")
+propsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+propsLayout.Padding = UDim.new(0, 5)
+propsLayout.Parent = propsFrame
+
+-- Script Source TextBox (hidden by default)
+local scriptFrame = Instance.new("Frame")
+scriptFrame.Size = UDim2.new(1, 0, 1, -150)
+scriptFrame.Position = UDim2.new(0, 0, 0, 150)
+scriptFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+scriptFrame.Visible = false
+scriptFrame.Parent = detailsFrame
+
+local scriptBox = Instance.new("TextBox")
+scriptBox.Size = UDim2.new(1, 0, 1, 0)
+scriptBox.BackgroundTransparency = 1
+scriptBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+scriptBox.TextSize = 14
+scriptBox.MultiLine = true
+scriptBox.ClearTextOnFocus = false
+scriptBox.TextWrapped = true
+scriptBox.TextXAlignment = Enum.TextXAlignment.Left
+scriptBox.TextYAlignment = Enum.TextYAlignment.Top
+scriptBox.Parent = scriptFrame
+
+-- Function to create tree item
+local function createTreeItem(obj, parentFrame, depth)
+    local itemFrame = Instance.new("Frame")
+    itemFrame.Size = UDim2.new(1, 0, 0, 25)
+    itemFrame.BackgroundTransparency = 1
+    itemFrame.Parent = parentFrame
+
+    local indent = Instance.new("UIPadding")
+    indent.PaddingLeft = UDim.new(0, depth * 20)
+    indent.Parent = itemFrame
+
+    local expandButton = Instance.new("ImageButton")
+    expandButton.Size = UDim2.new(0, 20, 0, 20)
+    expandButton.Position = UDim2.new(0, 0, 0.5, -10)
+    expandButton.BackgroundTransparency = 1
+    expandButton.Image = "rbxassetid://1284564024"
+    expandButton.Visible = #obj:GetChildren() > 0
+    expandButton.Parent = itemFrame
+
+    local nameButton = Instance.new("TextButton")
+    nameButton.Size = UDim2.new(1, -20, 1, 0)
+    nameButton.Position = UDim2.new(0, 20, 0, 0)
+    nameButton.BackgroundTransparency = 1
+    nameButton.Text = obj.Name .. " (" .. obj.ClassName .. ")"
+    nameButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    nameButton.TextSize = 14
+    nameButton.TextXAlignment = Enum.TextXAlignment.Left
+    nameButton.Parent = itemFrame
+
+    local childrenFrame = Instance.new("Frame")
+    childrenFrame.Size = UDim2.new(1, 0, 0, 0)
+    childrenFrame.BackgroundTransparency = 1
+    childrenFrame.Visible = false
+    childrenFrame.Parent = itemFrame
+
+    local childrenLayout = Instance.new("UIListLayout")
+    childrenLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    childrenLayout.Padding = UDim.new(0, 2)
+    childrenLayout.Parent = childrenFrame
+
+    local expanded = false
+    expandButton.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        childrenFrame.Visible = expanded
+        expandButton.Rotation = expanded and 90 or 0  -- Rotate to indicate expand
+        local height = expanded and childrenLayout.AbsoluteContentSize.Y or 0
+        childrenFrame.Size = UDim2.new(1, 0, 0, height)
+        treeFrame.CanvasSize = UDim2.new(0, 0, 0, treeLayout.AbsoluteContentSize.Y)
+    end)
+
+    -- Populate children lazily
+    local populated = false
+    expandButton.MouseButton1Click:Connect(function()
+        if not populated and expanded then
+            populated = true
+            for _, child in ipairs(obj:GetChildren()) do
+                createTreeItem(child, childrenFrame, depth + 1)
+            end
+        end
+    end)
+
+    -- On select
+    nameButton.MouseButton1Click:Connect(function()
+        -- Clear previous
+        for _, child in ipairs(propsFrame:GetChildren()) do
+            if child:IsA("TextLabel") then child:Destroy() end
+        end
+        viewportFrame:ClearAllChildren()
+        scriptFrame.Visible = false
+        propsFrame.Visible = true
+
+        -- Name
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0, 20)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = "Name: " .. obj.Name
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextSize = 14
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Parent = propsFrame
+
+        -- Class
+        local classLabel = Instance.new("TextLabel")
+        classLabel.Size = UDim2.new(1, 0, 0, 20)
+        classLabel.BackgroundTransparency = 1
+        classLabel.Text = "Class: " .. obj.ClassName
+        classLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        classLabel.TextSize = 14
+        classLabel.TextXAlignment = Enum.TextXAlignment.Left
+        classLabel.Parent = propsFrame
+
+        -- More properties (limited for lightness)
+        local props = {"Parent", "Archivable"}  -- Add more if needed
+        for _, prop in ipairs(props) do
+            local val = tostring(obj[prop])
+            local propLabel = Instance.new("TextLabel")
+            propLabel.Size = UDim2.new(1, 0, 0, 20)
+            propLabel.BackgroundTransparency = 1
+            propLabel.Text = prop .. ": " .. val
+            propLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            propLabel.TextSize = 14
+            propLabel.TextXAlignment = Enum.TextXAlignment.Left
+            propLabel.Parent = propsFrame
+        end
+
+        propsFrame.CanvasSize = UDim2.new(0, 0, 0, propsLayout.AbsoluteContentSize.Y)
+
+        -- Viewport preview
+        if obj:IsA("BasePart") or obj:IsA("Model") then
+            local clone = obj:Clone()
+            clone.Parent = viewportFrame
+            camera.CFrame = CFrame.new(clone:GetPivot().Position + Vector3.new(0, 0, 10), clone:GetPivot().Position)
+        end
+
+        -- If script, show source
+        if obj:IsA("LuaSourceContainer") then
+            propsFrame.Visible = false
+            scriptFrame.Visible = true
+            scriptBox.Text = obj.Source
+        end
+    end)
+
+    return itemFrame
+end
+
+-- Initial population (start from game)
+createTreeItem(game, treeFrame, 0)
+
+-- Search functionality
+local function refreshTree(filter)
+    treeFrame:ClearAllChildren()
+    treeLayout.Parent = treeFrame  -- Re-add layout
+
+    local function addFiltered(obj, parentFrame, depth)
+        if obj.Name:lower():find(filter:lower()) then
+            createTreeItem(obj, parentFrame, depth)
+        end
+        for _, child in ipairs(obj:GetChildren()) do
+            addFiltered(child, parentFrame, depth)  -- Flat search for lightness
+        end
+    end
+
+    if filter == "" then
+        createTreeItem(game, treeFrame, 0)
+    else
+        addFiltered(game, treeFrame, 0)
+    end
+    treeFrame.CanvasSize = UDim2.new(0, 0, 0, treeLayout.AbsoluteContentSize.Y)
+end
+
+searchBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        refreshTree(searchBox.Text)
+    end
+end)
+
+-- Initial canvas size
+treeFrame.CanvasSize = UDim2.new(0, 0, 0, treeLayout.AbsoluteContentSize.Y)
